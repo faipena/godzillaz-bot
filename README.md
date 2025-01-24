@@ -1,14 +1,14 @@
 # GodzillaZ bot
 
-Bot che notifica su un canale telegram che il miglior canale di twitch e` online.
+Bot che notifica su un canale telegram che il miglior canale di twitch è online.
 
-## Funzionalita`
+## Funzionalità
 
-Quando il [canale Twitch specificato](./main.ts) e` online, il bot inviera` un messaggio sul gruppo Telegram e provera` a pinnarlo. Se ha i permessi di pinnarlo, il bot si premurera` di rimuovere il messaggio pinnato dai pin a fine della live.
+Quando il [canale Twitch specificato](./main.ts) è online, il bot invierà un messaggio sul gruppo Telegram e proverà a pinnarlo. Se ha i permessi di pinnarlo, il bot si premurerà di rimuovere il messaggio pinnato dai pin a fine della live.
 
 ## Todo
 * Implementare con WebHooks invece che via polling / utilizzare le API di Twitch invece di fare http GET request
-* Migliore gestione del database (atomicita` o mutex o boh)
+* Migliore gestione del database (atomicità o mutex o boh)
 * Piu` funzionalita`
 
 ## Installazione
