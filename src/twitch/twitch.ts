@@ -1,38 +1,82 @@
 import TwitchAPI from "./api.ts";
+import TwitchCredentials from "./types.ts";
 
-const TWITCH_URL = "http://twitch.tv"
 export default class Twitch {
-    readonly channel: string;
-    readonly url : string;
-    readonly db: Deno.Kv;
-    api : TwitchAPI;
-    timer?: number;
+  readonly channel: string;
+  readonly db: Deno.Kv;
+  api: TwitchAPI;
+  timer?: number;
 
-    constructor(channel: string, db: Deno.Kv, clientId: string, clientSecret: string) {
-        this.channel = channel;
-        this.url = `${TWITCH_URL}/${channel}`;
-        this.db = db;
-        this.api = new TwitchAPI(clientId, clientSecret);
+  constructor(
+    channel: string,
+    db: Deno.Kv,
+    clientId: string,
+    clientSecret: string,
+  ) {
+    this.channel = channel;
+    this.db = db;
+    this.api = new TwitchAPI(clientId, clientSecret);
+  }
+
+  async init() {
+    await this.scheduleTokenRefresh();
+  }
+
+  async scheduleTokenRefresh() {
+    let result = await this.db.get(["twitch", "credentials", "saved"]);
+    if (result.value) {
+      this.api.credentials = result.value as TwitchCredentials;
     }
+    result = await this.db.get(["twitch", "credentials", "expirationDate"]);
+    let savedExpiry: Temporal.Instant = result.value
+      ? Temporal.Instant.fromEpochMilliseconds(result.value as number)
+      : Temporal.Now.instant();
+    savedExpiry = savedExpiry.add({ seconds: -10 });
+    const now = Temporal.Now.instant();
+    const delay = (savedExpiry.epochMilliseconds - now.epochMilliseconds) > 0
+      ? (savedExpiry.epochMilliseconds - now.epochMilliseconds) / 1000
+      : 0;
+    console.info(
+      `Twitch token refresh scheduled for ${savedExpiry.toString()}`,
+    );
+    setTimeout(async () => {
+      await this.refreshToken();
+    }, delay);
+  }
 
-    private getToken() {
-        
+  private async refreshToken() {
+    console.info("Refreshing Twitch token");
+    let expiration = Temporal.Now.instant();
+    try {
+      const newCredentials = await this.api.getToken();
+      this.api.credentials = newCredentials;
+      await this.db.set(["twitch", "credentials", "saved"], newCredentials);
+      expiration = Temporal.Now.instant().add({
+        seconds: newCredentials.expires_in,
+      });
+    } finally {
+      await this.db.set(
+        ["twitch", "credentials", "expirationDate"],
+        expiration.epochMilliseconds,
+      );
+      await this.scheduleTokenRefresh();
     }
+  }
 
-    onOnline?: () => void
+  onOnline?: () => void;
 
-    onOffline?: () => void
+  onOffline?: () => void;
 
-    startMonitoring(interval: number = 5000) {
-        this.timer = setInterval(async () => {
-            await this.api.getToken();
-        }, interval);
+  startMonitoring(interval: number = 5000) {
+    this.timer = setInterval(async () => {
+      await this.api.getToken();
+    }, interval);
+  }
+
+  stopMonitoring() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = undefined;
     }
-
-    stopMonitoring() {
-        if (this.timer) {
-            clearInterval(this.timer);
-            this.timer = undefined;
-        }
-    }
+  }
 }
