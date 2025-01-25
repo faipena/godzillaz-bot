@@ -1,7 +1,12 @@
-import TwitchCredentials from "./types.ts";
+import {
+  TwitchCredentials,
+  TwitchRequestStreams,
+  TwitchResponsePaginated,
+  TwitchResponseStreams,
+} from "./types.ts";
 
 const API_ID_URL = "https://id.twitch.tv";
-const API_HELIX_URL = "";
+const API_HELIX_URL = "https://api.twitch.tv/helix";
 
 export default class TwitchAPI {
   readonly #id;
@@ -36,11 +41,43 @@ export default class TwitchAPI {
     return await response.json();
   }
 
+  // deno-lint-ignore no-explicit-any
+  private async httpGet(url: string, params?: object): Promise<any> {
+    const httpMethod = "GET";
+    const httpParams = params
+      ? new URLSearchParams(params as {})
+      : new URLSearchParams();
+    const response = await fetch(`${url}?${httpParams}`, {
+      method: httpMethod,
+      headers: new Headers({
+        "Client-Id": `${this.#id}`,
+        "Authorization": `Bearer ${this.#credentials?.access_token}`,
+      }),
+    });
+    if (!response.ok) {
+      throw Error(
+        `Invalid response from twitch server (HTTP ${response.status}): ${await response
+          .text()}`,
+      );
+    }
+    return await response.json();
+  }
+
   async getToken(): Promise<TwitchCredentials> {
     return await this.http(`${API_ID_URL}/oauth2/token`, {
       client_id: this.#id,
       client_secret: this.#secret,
       grant_type: "client_credentials",
     });
+  }
+
+  async getStreams(
+    params?: TwitchRequestStreams,
+  ): Promise<TwitchResponseStreams[]> {
+    const response: TwitchResponsePaginated = await this.httpGet(
+      `${API_HELIX_URL}/streams`,
+      params,
+    );
+    return response.data as TwitchResponseStreams[];
   }
 }

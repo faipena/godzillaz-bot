@@ -60,8 +60,9 @@ if (import.meta.main) {
     }
 
     const TELEGRAM_GROUP_ID: number = +TELEGRAM_GROUP;
+    // TODO: use WebHooks
+    // TODO: handle telegram updates
     const telegram = new Telegram(TELEGRAM_TOKEN);
-    // TODO: use real twitch app (WebHooks)
     const twitch = new Twitch(
       TWITCH_CHANNEL,
       db,

@@ -1,5 +1,5 @@
 import TwitchAPI from "./api.ts";
-import TwitchCredentials from "./types.ts";
+import { TwitchCredentials } from "./types.ts";
 
 export default class Twitch {
   readonly channel: string;
@@ -69,7 +69,17 @@ export default class Twitch {
 
   startMonitoring(interval: number = 5000) {
     this.timer = setInterval(async () => {
-      await this.api.getToken();
+      const streams = await this.api.getStreams({ user_login: this.channel });
+      const isLive = streams.length > 0;
+      const wasLive: boolean =
+        (await this.db.get(["twitch", this.channel])).value === true;
+      if (wasLive && !isLive) {
+        await this.db.set(["twitch", "monitoring", this.channel], false);
+        if (this.onOffline) this.onOffline();
+      } else if (isLive && !wasLive) {
+        await this.db.set(["twitch", "monitoring", this.channel], true);
+        if (this.onOnline) this.onOnline();
+      }
     }, interval);
   }
 
