@@ -72,7 +72,7 @@ export default class Twitch {
       const streams = await this.api.getStreams({ user_login: this.channel });
       const isLive = streams.length > 0;
       const wasLive: boolean =
-        (await this.db.get(["twitch", this.channel])).value === true;
+        (await this.db.get(["twitch", "monitoring", this.channel])).value === true;
       if (wasLive && !isLive) {
         await this.db.set(["twitch", "monitoring", this.channel], false);
         if (this.onOffline) this.onOffline();
