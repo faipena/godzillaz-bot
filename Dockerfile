@@ -6,4 +6,4 @@ COPY deno.json main.ts ./
 
 USER deno:deno
 
-CMD ["run", "--allow-net", "--allow-env", "--unstable-kv", "main.ts"]
+CMD ["run", "--allow-net", "--allow-env", "--unstable-kv", "--unstable-temporal", "main.ts"]
