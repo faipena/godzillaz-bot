@@ -1,11 +1,15 @@
 import TwitchAPI from "./api.ts";
 import { TwitchCredentials } from "./types.ts";
 
+const TOKEN_REFRESH_INTERVAL_MS = 60 * 60 * 1000; // 1 Hour
+const STREAM_MONITOR_INTERVAL_MS = 30 * 1000; // 30 seconds
+
 export default class Twitch {
   readonly channel: string;
   readonly db: Deno.Kv;
   api: TwitchAPI;
-  timer?: number;
+  timerMonitor?: number;
+  timerToken?: number;
 
   constructor(
     channel: string,
@@ -16,6 +20,9 @@ export default class Twitch {
     this.channel = channel;
     this.db = db;
     this.api = new TwitchAPI(clientId, clientSecret);
+    setInterval(async () => {
+      await this.scheduleTokenRefresh();
+    }, TOKEN_REFRESH_INTERVAL_MS);
   }
 
   async init() {
@@ -31,17 +38,23 @@ export default class Twitch {
     let savedExpiry: Temporal.Instant = result.value
       ? Temporal.Instant.fromEpochMilliseconds(result.value as number)
       : Temporal.Now.instant();
-    savedExpiry = savedExpiry.add({ seconds: -10 });
+    savedExpiry = savedExpiry.add({
+      milliseconds: -2 * TOKEN_REFRESH_INTERVAL_MS,
+    });
     const now = Temporal.Now.instant();
-    const delay = (savedExpiry.epochMilliseconds - now.epochMilliseconds) > 0
-      ? (savedExpiry.epochMilliseconds - now.epochMilliseconds) / 1000
-      : 0;
-    console.info(
-      `Twitch token refresh scheduled for ${savedExpiry.toString()}`,
-    );
-    setTimeout(async () => {
+    const timeLeft = savedExpiry.epochMilliseconds - now.epochMilliseconds;
+    if (timeLeft <= 0) {
       await this.refreshToken();
-    }, delay);
+    } else {
+      console.debug(`twitch token savedExpiry: ${savedExpiry}`);
+      console.debug(
+        `time left: ${
+          Temporal.Duration.from({ milliseconds: timeLeft }).round({
+            largestUnit: "days",
+          })
+        }`,
+      );
+    }
   }
 
   private async refreshToken() {
@@ -67,12 +80,14 @@ export default class Twitch {
 
   onOffline?: () => void;
 
-  startMonitoring(interval: number = 5000) {
-    this.timer = setInterval(async () => {
+  startMonitoring(interval: number = STREAM_MONITOR_INTERVAL_MS) {
+    if (this.timerMonitor) return;
+    this.timerMonitor = setInterval(async () => {
       const streams = await this.api.getStreams({ user_login: this.channel });
       const isLive = streams.length > 0;
       const wasLive: boolean =
-        (await this.db.get(["twitch", "monitoring", this.channel])).value === true;
+        (await this.db.get(["twitch", "monitoring", this.channel])).value ===
+          true;
       if (wasLive && !isLive) {
         await this.db.set(["twitch", "monitoring", this.channel], false);
         if (this.onOffline) this.onOffline();
@@ -84,9 +99,9 @@ export default class Twitch {
   }
 
   stopMonitoring() {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = undefined;
+    if (this.timerMonitor) {
+      clearInterval(this.timerMonitor);
+      this.timerMonitor = undefined;
     }
   }
 }

@@ -28,11 +28,10 @@ docker build . -t godzillaz-bot:latest
 - Crea un file `.env` contenente le seguenti variabili:
 
 ```bash
-TG_T0K3N='YOUR TELEGRAM TOKEN'
+TG_T0K3N=YOUR TELEGRAM TOKEN
 TG_CH4T_1D=12345
-TW_CL13NT_1D='YOUR TWITCH CLIENT ID'
-TW_CL13NT_S3CR3T='YOUR TWITCH CLIENT SECRET'
-
+TW_CL13NT_1D=YOUR TWITCH CLIENT ID
+TW_CL13NT_S3CR3T=YOUR TWITCH CLIENT SECRET
 ```
 
 - Avvia il bot nel container:
