@@ -15,7 +15,7 @@ async function onLiveStart(telegram: Telegram, chat: number) {
       chat,
       "I GodzillaZ sono live! Seguili ora su twitch: https://twitch.tv/godzillaz_tv",
     );
-    const result = await db.get(["pinnedMessages"]);
+    const result = await db.get(["telegram", "pinnedMessages"]);
     const pinnedMessages: number[] = Array.isArray(result.value)
       ? result.value
       : [];
@@ -41,7 +41,7 @@ async function onLiveEnd(telegram: Telegram, chat: number) {
     }
   });
   // FIXME: atomic operations
-  await db.delete(["pinnedMessages"]);
+  await db.delete(["telegram", "pinnedMessages"]);
 }
 
 if (import.meta.main) {
